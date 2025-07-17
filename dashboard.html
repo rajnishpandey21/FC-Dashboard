@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" href="my-favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="my-favicon.png">
+    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Teacher Workload Dashboard</title>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        :root {
+            --gap: 15px;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100vh;
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: #333;
+            overflow: hidden;
+            background-image: url('img/background1.jpg');
+            background-size: cover;
+            background-position: center center;
+            background-attachment: fixed;
+        }
+
+        body.modal-open {
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: var(--gap);
+            flex-direction: column; /* Changed to column to stack title/dashboard vertically */
+        }
+
+        .dashboard-container {
+            width: 100%;
+            height: 100%;
+            max-width: 1600px;
+            display: flex;
+            flex-direction: column;
+            gap: var(--gap);
+        }
+
+        .card {
+            background-color: #ffffff;
+            border: 2px solid;
+            border-radius: 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .row {
+            display: flex;
+            gap: var(--gap);
+            width: 100%;
+        }
+
+        .row.fixed-row {
+            flex: 0 0 auto;
+            align-items: center;
+        }
+
+        .row.flexible-row {
+            flex: 1;
+            min-height: 0;
+        }
+
+        .row.flexible-row-large {
+            flex: 1.5;
+            min-height: 0;
+        }
+
+        .header-card {
+            flex-direction: row;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header-card label {
+            font-weight: 500;
+        }
+
+        .header-card input {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+
+        .refresh-button {
+            padding: 12px 22px;
+            border: 2px solid black;
+            border-radius: 16px;
+            background-image: linear-gradient(to top right, #ffb75e, #ed8f03);
+            color: black;
+            font-weight: bold;
+            font-size: 1em;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            transition: all 0.2s ease;
+        }
+
+        .refresh-button:hover {
+            transform: translateY(-2px);
+        }
+
+        .refresh-button:disabled {
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .export-master-btn {
+            background-image: linear-gradient(to top right, #4a90e2, #0052a2);
+            color: white;
+        }
+        
+        .clear-filters-btn {
+            background-image: linear-gradient(to top right, #6d3f9c, #4a2b6e);
+            color: white;
+        }
+
+        .header-button-group {
+            display: flex;
+            gap: var(--gap);
+            flex-shrink: 0;
+        }
+
+        .stat-card {
+            flex: 1;
+            text-align: center;
+            justify-content: center;
+            padding: 5px 10px;
+            min-width: 140px;
+        }
+
+        .stat-card h3 {
+            margin: 0 0 5px 0;
+            font-size: 0.8em;
+            color: #555;
+            font-weight: 600;
+        }
+
+        .stat-card .number {
+            margin: 0;
+            font-size: 2em;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .stat-card {
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.25);
+            z-index: 2;
+        }
+
+        select.teacher-dropdown {
+            padding: 8px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+            appearance: none;
+            background-color: #fff;
+            flex: 1;
+            min-width: 95px;
+        }
+
+        .dashboard-container > .row.fixed-row:nth-of-type(2) {
+            flex-wrap: nowrap;
+            gap: 5px;
+        }
+
+        .dashboard-container > .row.fixed-row:nth-of-type(2) .stat-card {
+            padding: 8px 6px;
+            min-width: 0;
+            flex-grow: 1;
+            flex-basis: 0;
+        }
+
+        .dashboard-container > .row.fixed-row:nth-of-type(2) .stat-card h3 {
+            font-size: 0.7em;
+            line-height: 1;
+            min-height: 1.2em;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .dashboard-container > .row.fixed-row:nth-of-type(2) .stat-card .number {
+            font-size: 1.7em;
+        }
+
+        /* Calendar Styles */
+        .calendar-card {
+            flex: 1;
+            padding: max(10px, min(2.5vw, 25px));
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 1px solid #dee2e6;
+            min-height: 350px;
+            max-height: 70vh;
+            overflow: hidden;
+        }
+
+        .calendar-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            min-height: 300px;
+            max-height: 65vh;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: max(5px, min(1vw, 10px));
+            padding: 0 max(5px, min(1vw, 15px));
+            flex-shrink: 0;
+        }
+
+        .calendar-nav {
+            background: none;
+            border: none;
+            font-size: max(14px, min(2.5vw, 20px));
+            cursor: pointer;
+            padding: max(3px, min(0.8vw, 8px)) max(5px, min(1.2vw, 12px));
+            border-radius: max(3px, min(0.8vw, 8px));
+            transition: background-color 0.2s;
+        }
+
+        .calendar-nav:hover {
+            background-color: #f0f0f0;
+        }
+
+        .calendar-title {
+            font-size: max(1.1rem, min(2.5vw, 1.6rem));
+            font-weight: 900;
+            color: #333;
+            letter-spacing: 1px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: max(4px, min(1.2vw, 12px));
+            flex-grow: 1;
+            padding: max(8px, min(2vw, 20px));
+            background-color: transparent;
+            border-radius: 12px;
+            width: 100%;
+            height: 100%;
+            min-height: 280px;
+            max-height: max(350px, 60vh);
+        }
+
+        .calendar-day-header {
+            background-color: #000000;
+            color: white;
+            padding: max(2px, min(0.8vw, 8px)) max(1px, min(0.5vw, 4px));
+            text-align: center;
+            font-weight: 600;
+            font-size: max(0.6rem, min(1.2vw, 0.9rem));
+            border-radius: max(3px, min(0.8vw, 8px));
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            height: max(20px, min(4vh, 35px));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 18px;
+        }
+
+        .calendar-day {
+            background-color: white;
+            color: black;
+            padding: max(1px, min(0.5vw, 6px));
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: max(0.7rem, min(1.8vw, 1.2rem));
+            font-weight: bold;
+            border-radius: max(4px, min(1vw, 10px));
+            border: 2px solid #ddd;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            height: max(25px, min(7vh, 55px));
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            min-height: 25px;
+            aspect-ratio: 1.2;
+        }
+
+        .calendar-day:hover {
+            background-color: #f5f5f5;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            z-index: 1;
+        }
+
+        .calendar-day.other-month {
+            color: #ccc;
+            background-color: #f9f9f9;
+            opacity: 0.7;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+        }
+
+        .calendar-day.selected {
+            background-color: white;
+            color: black;
+            border-color: #333;
+            font-weight: bold;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .calendar-day.today {
+            background-color: white;
+            color: black;
+            font-weight: bold;
+            border-color: #007bff;
+            border-width: 3px;
+            box-shadow: 0 3px 10px rgba(0, 123, 255, 0.3);
+        }
+
+        .calendar-day.in-range {
+            background-color: white;
+            color: black;
+            border-color: #007bff;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 123, 255, 0.2);
+        }
+
+        @media (max-width: 1200px) {
+            :root {
+                --gap: 10px;
+            }
+
+            .stat-card .number {
+                font-size: 1.5em;
+            }
+
+            .stat-card h3 {
+                font-size: 0.75em;
+            }
+
+            .calendar-day {
+                padding: max(1px, min(0.4vw, 4px));
+                font-size: max(0.65rem, min(1.5vw, 1rem));
+                border-radius: max(3px, min(0.8vw, 8px));
+                height: max(22px, min(6vh, 45px));
+                min-height: 22px;
+            }
+
+            .calendar-grid {
+                gap: max(3px, min(1vw, 10px));
+                padding: max(6px, min(1.5vw, 16px));
+                max-height: max(320px, 55vh);
+                min-height: 250px;
+            }
+
+            .calendar-day-header {
+                padding: max(1px, min(0.6vw, 6px)) max(1px, min(0.4vw, 3px));
+                font-size: max(0.55rem, min(1vw, 0.8rem));
+                height: max(18px, min(3.5vh, 30px));
+                min-height: 16px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            html, body {
+                height: auto;
+                overflow: auto;
+            }
+
+            .row {
+                flex-wrap: wrap;
+            }
+
+            .header-card {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+
+            .calendar-day {
+                padding: max(1px, min(0.3vw, 3px));
+                font-size: max(0.6rem, min(1.3vw, 0.9rem));
+                border-radius: max(2px, min(0.6vw, 6px));
+                height: max(20px, min(5vh, 40px));
+                min-height: 20px;
+            }
+
+            .calendar-grid {
+                gap: max(2px, min(0.8vw, 8px));
+                padding: max(5px, min(1.2vw, 12px));
+                max-height: max(280px, 50vh);
+                min-height: 220px;
+            }
+
+            .calendar-day-header {
+                padding: max(1px, min(0.5vw, 4px)) max(1px, min(0.3vw, 2px));
+                font-size: max(0.5rem, min(0.8vw, 0.7rem));
+                border-radius: max(1px, min(0.3vw, 3px));
+                height: max(16px, min(3vh, 25px));
+                min-height: 14px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .calendar-day {
+                padding: max(0.5px, min(0.2vw, 2px));
+                font-size: max(0.55rem, min(1.1vw, 0.8rem));
+                border-radius: max(1px, min(0.4vw, 4px));
+                height: max(18px, min(4vh, 35px));
+                min-height: 18px;
+            }
+
+            .calendar-grid {
+                gap: max(1px, min(0.6vw, 6px));
+                padding: max(4px, min(1vw, 10px));
+                max-height: max(240px, 45vh);
+                min-height: 200px;
+            }
+
+            .calendar-day-header {
+                padding: max(0.5px, min(0.3vw, 3px)) max(0.5px, min(0.2vw, 1px));
+                font-size: max(0.45rem, min(0.7vw, 0.65rem));
+                border-radius: max(1px, min(0.3vw, 3px));
+                height: max(14px, min(2.5vh, 22px));
+                min-height: 12px;
+            }
+
+            .stat-card:hover {
+                transform: scale(1.03);
+            }
+        }
+
+        /* Loading Spinner Styles */
+        .card .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .card .loading-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #ed8f03;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        /* New style for category display */
+        #current-category-display {
+            text-align: center;
+            font-size: 1.8em; /* Slightly larger for prominence */
+            font-weight: 700;
+            color: #333; 
+            margin-bottom: 25px; /* Spacing below the title */
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.1); /* Subtle shadow */
+        }
+        /* Add this new CSS block to your existing <style> tag in dashboard.html */
+
+/* KPI Icon & Tooltip Styles */
+.kpi-icon-container {
+    position: relative; /* Essential for positioning the tooltip relative to this container */
+    display: inline-block; /* Allows the container to wrap its content and receive hover */
+    margin-left: 5px; /* Small space between KPI text and icon */
+    cursor: help; /* Changes cursor to a help icon on hover */
+    vertical-align: middle; /* Align the icon container vertically with text */
+}
+
+.kpi-svg-icon {
+    width: 16px; /* Size of the SVG icon */
+    height: 16px;
+    fill: #999; /* Default color of the icon (light gray) */
+    vertical-align: middle; /* Align with text */
+    transition: fill 0.2s ease; /* Smooth color transition on hover */
+}
+
+.kpi-icon-container:hover .kpi-svg-icon {
+    fill: #555; /* Darker color on hover */
+}
+
+.kpi-tooltip {
+    visibility: hidden; /* Hidden by default */
+    opacity: 0; /* Fully transparent by default */
+    background-color: rgba(0, 0, 0, 0.85); /* Dark background with transparency */
+    color: #fff; /* White text */
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px 12px;
+    position: absolute;
+    z-index: 1001; /* High z-index to appear above other elements */
+    bottom: 125%; /* Position above the icon, slightly offset */
+    left: 50%;
+    transform: translateX(-50%); /* Center the tooltip horizontally */
+    white-space: normal; /* Allow text to wrap if it's too long */
+    max-width: 200px; /* Max width before text wraps */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); /* Subtle shadow for depth */
+    transition: opacity 0.3s ease, visibility 0.3s ease; /* Smooth fade in/out */
+    font-size: 0.75em; /* Smaller font for tooltip text */
+    line-height: 1.4;
+}
+
+/* Arrow for the tooltip */
+.kpi-tooltip::after {
+    content: "";
+    position: absolute;
+    top: 100%; /* At the bottom of the tooltip */
+    left: 50%;
+    margin-left: -5px; /* Center the arrow */
+    border-width: 5px;
+    border-style: solid;
+    border-color: rgba(0, 0, 0, 0.85) transparent transparent transparent; /* Dark arrow pointing down */
+}
+
+/* Show the tooltip on hover */
+.kpi-icon-container:hover .kpi-tooltip {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Responsive adjustments for tooltip position on smaller screens */
+@media (max-width: 768px) {
+    .kpi-tooltip {
+        bottom: unset; /* Reset bottom positioning */
+        top: 125%; /* Position below icon on small screens */
+        left: 50%; /* Ensure it stays centered */
+        transform: translateX(-50%);
+    }
+    .kpi-tooltip::after {
+        top: unset; /* Reset top positioning for arrow */
+        bottom: 100%; /* Position arrow above tooltip */
+        border-color: transparent transparent rgba(0, 0, 0, 0.85) transparent; /* Arrow pointing up */
+    }
+}
+    </style>
+</head>
+
+<body>
+    <h2 id="current-category-display"></h2> 
+
+    <div class="dashboard-container">
+        <div class="row fixed-row">
+            <div class="card header-card">
+                <label for="start-date">Start Date:</label>
+                <input type="date" id="start-date" />
+                <label for="end-date">End Date:</label>
+                <input type="date" id="end-date" />
+
+                <label for="teacher-select">Teachers:</label>
+                <select id="teacher-select" class="teacher-dropdown">
+                    <option value="__ALL__">All Teachers</option>
+                </select>
+            </div>
+            <div class="header-button-group">
+                <button id="export-master-btn" class="refresh-button export-master-btn">Export Master Report</button>
+                <button id="clear-filters-btn" class="refresh-button clear-filters-btn">Clear Filters</button>
+                <button id="refresh-data-btn" class="refresh-button">Refresh Data</button>
+            </div>
+        </div>
+
+       <div class="row fixed-row">
+    <div id="projected-workload-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Teaching Projected Workload %
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v2h-2zm0 4h2v6h-2z"></path></svg>
+                    <span class="kpi-tooltip">How much percentage of classes were allocated to the teachers in respect to their capacity. (Currently Hardcoded)</span>
+                </span>
+            </h3>
+            <p id="projected-workload" class="number">...</p>
+        </div>
+    </div>
+
+    <div id="actual-workload-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Teaching Actual Workload %
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-1 6h2v2h-2zm0 4h2v6h-2z"></path></svg>
+                    <span class="kpi-tooltip">The actual percentage of classes taken by teachers. (Currently Hardcoded)</span>
+                </span>
+            </h3>
+            <p id="actual-workload" class="number">...</p>
+        </div>
+    </div>
+
+    <div id="projected-classes-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Projected Classes
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20a2 2 0 0 0 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM9 14H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2zm-8 4H7v-2h2v2zm4 0h-2v-2h2v2zm4 0h-2v-2h2v2z"></path></svg>
+                    <span class="kpi-tooltip">Total number of classes initially scheduled or planned for the selected time range and category.</span>
+                </span>
+            </h3>
+            <p id="projected-classes" class="number">-</p>
+        </div>
+    </div>
+
+    <div id="actual-classes-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Actual Classes Taken
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path></svg>
+                    <span class="kpi-tooltip">Count of classes that successfully happened or were compensated. (Status: 'Class Happened' or 'Compensated')</span>
+                </span>
+            </h3>
+            <p id="actual-classes" class="number">-</p>
+        </div>
+    </div>
+
+    <div id="cancelled-delayed-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Cancelled/Delayed Classes
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>
+                    <span class="kpi-tooltip">Total count of classes that initially deviated from the plan (were cancelled, delayed, or later compensated). (Status: 'Delayed/Cancelled' or 'Compensated')</span>
+                </span>
+            </h3>
+            <p id="cancelled-delayed" class="number">-</p>
+        </div>
+    </div>
+
+    <div id="cancelled-delayed-percent-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Cancelled/Delayed Classes %
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"></path></svg>
+                    <span class="kpi-tooltip">Percentage of total projected classes that were initially cancelled, delayed, or later compensated.</span>
+                </span>
+            </h3>
+            <p id="cancelled-delayed-percent" class="number">-</p>
+        </div>
+    </div>
+
+    <div id="delayed-not-compensated-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Delayed Classes (Not Compensated Yet)
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zM12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"></path></svg>
+                    <span class="kpi-tooltip">Number of classes that were delayed/cancelled and have not yet been compensated. (Status: 'Delayed/Cancelled')</span>
+                </span>
+            </h3>
+            <p id="delayed-not-compensated" class="number">-</p>
+        </div>
+    </div>
+    
+    <div id="delayed-not-compensated-percent-card" class="card stat-card">
+        <div class="loading-overlay"><div class="spinner"></div></div>
+        <div class="stat-card-body">
+            <h3>Delayed Classes (Not Compensated Yet) %
+                <span class="kpi-icon-container">
+                    <svg class="kpi-svg-icon" viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zM12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"></path></svg>
+                    <span class="kpi-tooltip">Percentage of total projected classes that are currently delayed/cancelled and uncompensated.</span>
+                </span>
+            </h3>
+            <p id="delayed-not-compensated-percent" class="number">-</p>
+        </div>
+    </div>
+</div>
+
+        <div class="row flexible-row-large">
+            <div id="calendar-card" class="card calendar-card">
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button class="calendar-nav" id="prev-month">‹</button>
+                        <div class="calendar-title" id="calendar-title">January 2024</div>
+                        <button class="calendar-nav" id="next-month">›</button>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        // Your Apps Script Web app URL
+        const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbxI578Ubcjtuia4wKRok7dfOIYJ4bKpS2ZlRX4nIbetO_LkxbYG4q7BBE9tvq-JGnaXug/exec';
+
+        const TeacherDashboard = {
+            currentDate: new Date(),
+            selectedStartDate: null,
+            selectedEndDate: null,
+            teacherNameMap: {}, // To map teacher IDs (which are now names) to display names
+            currentCategory: null,
+
+            // New helper function to get URL parameters
+            getUrlParameter(name) {
+                name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+                var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+                var results = regex.exec(location.search);
+                return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+            },
+
+            // Inside TeacherDashboard object, update the init function (around line 751)
+            init() {
+                document.addEventListener('DOMContentLoaded', () => {
+                    this.setupEventListeners();
+                    const initialCategory = this.getUrlParameter('category');
+                    if (initialCategory) {
+                        this.currentCategory = initialCategory; // <--- ADD THIS LINE
+                        console.log("Dashboard loaded for category:", initialCategory);
+                        const categoryDisplayElement = document.getElementById('current-category-display');
+                        if (categoryDisplayElement) {
+                            categoryDisplayElement.textContent = `Category: ${initialCategory}`;
+                        }
+                    } else {
+                        alert("Error: No category specified in URL. Redirecting to landing page.");
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    this.loadDashboardData();
+                    this.initializeCalendar();
+                });
+            },
+
+            setupEventListeners() {
+                const startDateInput = document.getElementById('start-date');
+                const endDateInput = document.getElementById('end-date');
+                const refreshButton = document.getElementById('refresh-data-btn');
+                const teacherSelect = document.getElementById('teacher-select');
+                const exportMasterButton = document.getElementById('export-master-btn');
+                const clearFiltersButton = document.getElementById('clear-filters-btn');
+
+                startDateInput.addEventListener('change', () => {
+                    this.selectedStartDate = startDateInput.value ? new Date(startDateInput.value) : null;
+                    this.updateDashboardView();
+                    this.updateCalendar();
+                });
+                
+                endDateInput.addEventListener('change', () => {
+                    this.selectedEndDate = endDateInput.value ? new Date(endDateInput.value) : null;
+                    this.updateDashboardView();
+                    this.updateCalendar();
+                });
+                
+                teacherSelect.addEventListener('change', () => this.updateDashboardView());
+                refreshButton.addEventListener('click', () => this.loadDashboardData());
+                exportMasterButton.addEventListener('click', () => this.exportMasterReport());
+                clearFiltersButton.addEventListener('click', () => this.clearFilters());
+
+                // Calendar navigation
+                document.getElementById('prev-month').addEventListener('click', () => this.navigateMonth(-1));
+                document.getElementById('next-month').addEventListener('click', () => this.navigateMonth(1));
+
+                // KPI card click handlers
+                this.setupKpiClickHandlers();
+                
+                // Add enhanced button click effects
+                this.addButtonClickEffects();
+            },
+
+            async loadDashboardData() {
+                const refreshButton = document.getElementById('refresh-data-btn');
+                try {
+                    if (refreshButton) {
+                        refreshButton.textContent = '🔄 Refreshing...';
+                        refreshButton.disabled = true;
+                    }
+                    
+                    document.querySelectorAll('.card[id*="-card"]').forEach(card => this.showLoader(card.id));
+
+                    await this.fetchTeachers(); 
+                    await this.fetchDashboardData();
+                    
+                    this.addButtonClickEffects();
+
+                } catch (error) {
+                    console.error('Dashboard loading error:', error);
+                    document.querySelectorAll('.number').forEach(el => el.innerText = 'Error');
+                    alert('Error loading dashboard data. Check console for details.');
+                } finally {
+                    if (refreshButton) {
+                        refreshButton.textContent = 'Refresh Data';
+                        refreshButton.disabled = false;
+                    }
+                }
+            },
+
+            updateDashboardView() {
+                this.fetchDashboardData();
+            },
+
+            async fetchTeachers() {
+                if (!this.currentCategory) {
+                    console.error("Internal Error: currentCategory is not set when fetching teachers.");
+                    const teacherSelect = document.getElementById('teacher-select');
+                    teacherSelect.innerHTML = '<option value="__ALL__">All Teachers</option>';
+                    return; 
+                }
+                const category = this.currentCategory;
+
+                try {
+                    const response = await fetch(`${API_BASE_URL}?path=teachers&category=${encodeURIComponent(category)}`);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    const teachers = await response.json();
+                    
+                    if (teachers.error) {
+                        console.error("Apps Script Error fetching teachers:", teachers.error);
+                        alert("Error from backend while fetching teachers: " + teachers.error);
+                        const teacherSelect = document.getElementById('teacher-select');
+                        teacherSelect.innerHTML = '<option value="__ALL__">All Teachers</option>';
+                        return;
+                    }
+
+                    const teacherSelect = document.getElementById('teacher-select');
+                    const currentSelectedTeacher = teacherSelect.value;
+
+                    teacherSelect.innerHTML = '<option value="__ALL__">All Teachers</option>';
+                    this.teacherNameMap = {};
+
+                    teachers.forEach(teacher => {
+                        const option = document.createElement('option');
+                        option.value = teacher.id; 
+                        option.textContent = teacher.name;
+                        teacherSelect.appendChild(option);
+                        this.teacherNameMap[teacher.id] = teacher.name;
+                    });
+
+                    if (currentSelectedTeacher && this.teacherNameMap[currentSelectedTeacher]) {
+                        teacherSelect.value = currentSelectedTeacher;
+                    } else {
+                        teacherSelect.value = '__ALL__';
+                    }
+
+                } catch (error) {
+                    console.error('Error fetching teachers:', error);
+                    alert('Could not load teacher list. Please check the browser console for details or verify your Google Sheet data and Apps Script deployment. Error: ' + error.message);
+                    const teacherSelect = document.getElementById('teacher-select');
+                    teacherSelect.innerHTML = '<option value="__ALL__">All Teachers</option>';
+                }
+            },
+
+           // Inside TeacherDashboard object, REPLACE THE ENTIRE fetchDashboardData FUNCTION WITH THIS:
+async fetchDashboardData() {
+    const selectedTeacherName = document.getElementById('teacher-select').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+
+    console.log("Frontend: fetchDashboardData initiated."); // Log 1
+
+    if (!this.currentCategory) {
+        console.error("Frontend Error: currentCategory is not set when fetching dashboard data."); // Log 2
+        document.querySelectorAll('.number').forEach(el => el.innerText = 'N/A');
+        return;
+    }
+    const category = this.currentCategory;
+
+    // Log the parameters being sent for dashboard summary
+    console.log("Frontend: Dashboard summary parameters:", { // Log 3
+        category: category,
+        teacher: selectedTeacherName,
+        startDate: startDate,
+        endDate: endDate
+    });
+
+    let url = `${API_BASE_URL}?path=dashboard-summary&category=${encodeURIComponent(category)}`;
+    const params = new URLSearchParams();
+
+    if (selectedTeacherName !== '__ALL__') {
+        params.append('teacherName', selectedTeacherName);
+    }
+    if (startDate) {
+        params.append('startDate', startDate);
+    }
+    if (endDate) {
+        params.append('endDate', endDate);
+    }
+    url += `&${params.toString()}`;
+
+    console.log("Frontend: Requesting dashboard summary from URL:", url); // Log 4
+
+    try {
+        const response = await fetch(url);
+        console.log("Frontend: Received dashboard summary response. Status:", response.status); // Log 5
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("Frontend Error: HTTP request failed for dashboard summary.", errorText); // Log 6
+            throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorText}`);
+        }
+        const data = await response.json(); // Parse the JSON response
+        console.log("Frontend: Received raw dashboard summary data:", data); // Log 7 (VERY IMPORTANT)
+        
+        if (data.error) {
+            console.error("Frontend Error: Backend reported an error in dashboard summary data:", data.error); // Log 8
+            document.querySelectorAll('.number').forEach(el => el.innerText = 'Error');
+            alert("Error from backend for dashboard summary: " + data.error);
+            return;
+        }
+        if (data.message === 'No data found') {
+             console.warn("Frontend Warning: No dashboard summary data found for selected filters."); // Log 9
+             document.querySelectorAll('.number').forEach(el => el.innerText = '0');
+             return;
+        }
+
+        // Map the data received from Apps Script to your expected frontend structure
+        const formattedData = {
+            projectedWorkload: data.projectedWorkload,
+            actualWorkload: data.actualWorkload,
+            projectedClasses: data.projectedClasses,
+            actualClasses: data.actualClasses,
+            cancelledDelayed: data.cancelledDelayed,
+            cancelledDelayedPercent: data.CanceledDelayedPercent, // Note casing from Apps Script
+            delayedNotCompensated: data.delayedNotCompensated,
+            delayedNotCompensatedPercent: data.DelayedNotCompensatedPercent // Note casing from Apps Script
+        };
+        console.log("Frontend: Formatted data for rendering:", formattedData); // Log 10 (VERY IMPORTANT)
+
+        this.renderDashboardMetrics(formattedData); // Render the KPIs
+        console.log("Frontend: Dashboard metrics rendered successfully."); // Log 11
+
+    } catch (error) {
+        console.error('Frontend Error: Fetching dashboard data encountered an issue:', error); // Log 12
+        document.querySelectorAll('.number').forEach(el => el.innerText = 'N/A');
+        alert('Failed to fetch dashboard data. Check network or console for details. Error: ' + error.message);
+    } finally {
+        document.querySelectorAll('.card[id*="-card"]').forEach(card => this.hideLoader(card.id));
+        console.log("Frontend: fetchDashboardData process finished."); // Log 13
+    }
+},
+
+// Inside TeacherDashboard object, REPLACE THE ENTIRE renderDashboardMetrics FUNCTION WITH THIS:
+renderDashboardMetrics(data) {
+    console.log("Frontend: Starting renderDashboardMetrics with data:", data); // Log 1
+
+    document.getElementById('projected-workload').innerText = data.projectedWorkload + '%';
+    document.getElementById('actual-workload').innerText = data.actualWorkload + '%';
+    document.getElementById('projected-classes').innerText = data.projectedClasses;
+    document.getElementById('actual-classes').innerText = data.actualClasses;
+    document.getElementById('cancelled-delayed').innerText = data.cancelledDelayed;
+    
+    // Log the specific percentage values before setting them
+    console.log("Frontend: cancelledDelayedPercent to display:", data.cancelledDelayedPercent + '%'); // Log 2
+    document.getElementById('cancelled-delayed-percent').innerText = data.cancelledDelayedPercent + '%';
+    document.getElementById('delayed-not-compensated').innerText = data.delayedNotCompensated;
+    console.log("Frontend: delayedNotCompensatedPercent to display:", data.delayedNotCompensatedPercent + '%'); // Log 3
+    document.getElementById('delayed-not-compensated-percent').innerText = data.delayedNotCompensatedPercent + '%';
+    console.log("Frontend: All KPIs updated."); // Log 4
+},
+
+            initializeCalendar() {
+                this.updateCalendar();
+            },
+
+            updateCalendar() {
+                const year = this.currentDate.getFullYear();
+                const month = this.currentDate.getMonth();
+                
+                const monthNames = ["January", "February", "March", "April", "May", "June",
+                    "July", "August", "September", "October", "November", "December"];
+                document.getElementById('calendar-title').textContent = `${monthNames[month].toUpperCase()} ${year}`;
+
+                const grid = document.getElementById('calendar-grid');
+                grid.innerHTML = '';
+
+                const dayHeaders = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+                dayHeaders.forEach(day => {
+                    const dayHeader = document.createElement('div');
+                    dayHeader.className = 'calendar-day-header';
+                    dayHeader.textContent = day;
+                    grid.appendChild(dayHeader);
+                });
+
+                const firstDay = new Date(year, month, 1);
+                const lastDay = new Date(year, month + 1, 0);
+                const daysInMonth = lastDay.getDate();
+                const startingDayOfWeek = firstDay.getDay();
+
+                for (let i = 0; i < startingDayOfWeek; i++) {
+                    const emptyDay = document.createElement('div');
+                    emptyDay.className = 'calendar-day other-month';
+                    const prevMonthDay = new Date(year, month, 0 - (startingDayOfWeek - 1 - i));
+                    emptyDay.textContent = prevMonthDay.getDate();
+                    grid.appendChild(emptyDay);
+                }
+
+                const today = new Date();
+                for (let day = 1; day <= daysInMonth; day++) {
+                    const dayElement = document.createElement('div');
+                    dayElement.className = 'calendar-day';
+                    dayElement.textContent = day;
+                    
+                    const currentDate = new Date(year, month, day);
+                    
+                    if (currentDate.toDateString() === today.toDateString()) {
+                        dayElement.classList.add('today');
+                    }
+                    
+                    if (this.selectedStartDate && this.selectedEndDate) {
+                        if (currentDate >= this.selectedStartDate && currentDate <= this.selectedEndDate) {
+                            dayElement.classList.add('in-range');
+                        }
+                    } else if (this.selectedStartDate && currentDate.toDateString() === this.selectedStartDate.toDateString()) {
+                        dayElement.classList.add('selected');
+                    } else if (this.selectedEndDate && currentDate.toDateString() === this.selectedEndDate.toDateString()) {
+                        dayElement.classList.add('selected');
+                    }
+                    
+                    dayElement.addEventListener('click', () => this.handleDateClick(currentDate, dayElement));
+                    
+                    grid.appendChild(dayElement);
+                }
+
+                const totalCells = grid.children.length - 7;
+                const remainingCells = 42 - totalCells - 7;
+                for (let i = 1; i <= remainingCells; i++) {
+                    const emptyDay = document.createElement('div');
+                    emptyDay.className = 'calendar-day other-month';
+                    emptyDay.textContent = i;
+                    grid.appendChild(emptyDay);
+                }
+                
+                this.addButtonClickEffects();
+            },
+
+            navigateMonth(direction) {
+                this.currentDate.setMonth(this.currentDate.getMonth() + direction);
+                this.updateCalendar();
+            },
+
+            async exportMasterReport() {
+                const button = document.getElementById('export-master-btn');
+                const originalText = button.textContent;
+                
+                console.log("Export Master Report initiated."); // Log 1
+                try {
+                    button.textContent = '📊 Exporting...';
+                    button.disabled = true;
+
+                    const selectedTeacherName = document.getElementById('teacher-select').value;
+                    const startDate = document.getElementById('start-date').value;
+                    const endDate = document.getElementById('end-date').value;
+                    
+                    if (!this.currentCategory) {
+                        console.error("Frontend Error: currentCategory is null or undefined for export."); // Log 2
+                        alert("Cannot export report: Category not loaded. Please refresh the dashboard.");
+                        return;
+                    }
+                    const category = this.currentCategory; // Re-assign for local use for clarity
+
+                    console.log("Frontend: Export parameters:", { // Log 3
+                        category: category,
+                        teacher: selectedTeacherName,
+                        startDate: startDate,
+                        endDate: endDate
+                    });
+                        
+                    const urlParams = new URLSearchParams({
+                        path: 'master-report',
+                        category: encodeURIComponent(category)
+                    });
+                    if (selectedTeacherName !== '__ALL__') {
+                        urlParams.append('teacherName', encodeURIComponent(selectedTeacherName));
+                    }
+                    if (startDate) {
+                        urlParams.append('startDate', startDate);
+                    }
+                    if (endDate) {
+                        urlParams.append('endDate', endDate);
+                    }
+
+                    const requestUrl = `${API_BASE_URL}?${urlParams.toString()}`;
+                    console.log("Frontend: Requesting master report from URL:", requestUrl); // Log 4
+
+                    const response = await fetch(requestUrl);
+                    console.log("Frontend: Received response from API. Status:", response.status); // Log 5
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("Frontend Error: HTTP request failed.", errorText); // Log 6
+                        throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorText}`);
+                    }
+                    
+                    const reportData = await response.json();
+                    console.log("Frontend: Received master report data:", reportData); // Log 7
+
+                    if (reportData.error) {
+                        console.error("Frontend Error: Backend reported an error in reportData:", reportData.error); // Log 8
+                        throw new Error(reportData.error);
+                    }
+                    
+                    if (!reportData.summary || !Array.isArray(reportData.summary) || reportData.summary.length <= 1) { 
+                        console.warn("Frontend Warning: Master report summary appears empty or only contains headers. No data to export."); // Log 9
+                        alert('No data to export for the selected filters in this category.');
+                        return;
+                    }
+                    
+                    const workbook = this.createExcelWorkbook(reportData);
+                    console.log("Frontend: Workbook created successfully."); // Log 10
+                    
+                    const fileName = `Teacher_Workload_Master_Report_${category.replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                    console.log("Frontend: Downloading file:", fileName); // Log 11
+                    this.downloadExcel(workbook, fileName);
+                    console.log("Frontend: Export process completed."); // Log 12
+
+                } catch (error) {
+                    console.error('Frontend Error: Exporting report encountered an issue:', error); // Log 13
+                    alert('Error exporting report: ' + error.message);
+                } finally {
+                    button.textContent = originalText;
+                    button.disabled = false;
+                    console.log("Export Master Report process finished."); // Log 14
+                }
+            },
+
+            createExcelWorkbook(reportData) {
+                const wb = XLSX.utils.book_new();
+                
+                const summaryWS = XLSX.utils.aoa_to_sheet(reportData.summary);
+                const detailsWS = XLSX.utils.aoa_to_sheet(reportData.details);
+                const analysisWS = XLSX.utils.aoa_to_sheet(reportData.analysis);
+                const actionsWS = XLSX.utils.aoa_to_sheet(reportData.actions);
+                
+                XLSX.utils.book_append_sheet(wb, summaryWS, 'Executive Summary');
+                XLSX.utils.book_append_sheet(wb, detailsWS, 'Teacher Details');
+                XLSX.utils.book_append_sheet(wb, analysisWS, 'Performance Analysis');
+                XLSX.utils.book_append_sheet(wb, actionsWS, 'Action Items');
+                
+                this.styleWorksheet(summaryWS, 'summary');
+                this.styleWorksheet(detailsWS, 'details');
+                this.styleWorksheet(analysisWS, 'analysis');
+                this.styleWorksheet(actionsWS, 'actions');
+                
+                return wb;
+            },
+
+            styleWorksheet(ws, type) {
+                const range = XLSX.utils.decode_range(ws['!ref']);
+                
+                if (!ws['!cols']) ws['!cols'] = [];
+                
+                switch(type) {
+                    case 'summary':
+                        ws['!cols'][0] = {width: 25};
+                        ws['!cols'][1] = {width: 15};
+                        break;
+                    case 'details':
+                        for (let i = 0; i < 12; i++) {
+                            ws['!cols'][i] = {width: i === 0 ? 15 : 12};
+                        }
+                        break;
+                    case 'analysis':
+                        ws['!cols'][0] = {width: 20};
+                        ws['!cols'][1] = {width: 20};
+                        ws['!cols'][2] = {width: 30};
+                        break;
+                    case 'actions':
+                        ws['!cols'][0] = {width: 10};
+                        ws['!cols'][1] = {width: 15};
+                        ws['!cols'][2] = {width: 20};
+                        ws['!cols'][3] = {width: 35};
+                        ws['!cols'][4] = {width: 20};
+                        break;
+                }
+                
+                if (type === 'details' && range.e.r > 2) {
+                    ws['!autofilter'] = { ref: XLSX.utils.encode_range({s: {c: 0, r: 2}, e: {c: range.e.c, r: range.e.r}}) };
+                }
+                if (type === 'analysis' && range.e.r > 2) {
+                    ws['!autofilter'] = { ref: XLSX.utils.encode_range({s: {c: 0, r: 2}, e: {c: range.e.c, r: range.e.r}}) };
+                }
+                if (type === 'actions' && range.e.r > 2) {
+                    ws['!autofilter'] = { ref: XLSX.utils.encode_range({s: {c: 0, r: 2}, e: {c: range.e.c, r: range.e.r}}) };
+                }
+            },
+
+            downloadExcel(workbook, filename) {
+                try {
+                    XLSX.writeFile(workbook, filename);
+                } catch (error) {
+                    const wbout = XLSX.write(workbook, {bookType:'xlsx', type:'binary'});
+                    const blob = new Blob([this.s2ab(wbout)], {type:"application/octet-stream"});
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    
+                    link.href = url;
+                    link.download = filename;
+                    link.style.visibility = 'hidden';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }
+            },
+
+            s2ab(s) {
+                const buf = new ArrayBuffer(s.length);
+                const view = new Uint8Array(buf);
+                for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+                return buf;
+            },
+
+            clearFilters() {
+                document.getElementById('start-date').value = '';
+                document.getElementById('end-date').value = '';
+                document.getElementById('teacher-select').value = '__ALL__';
+                
+                this.selectedStartDate = null;
+                this.selectedEndDate = null;
+                this.currentDate = new Date();
+                
+                this.loadDashboardData(); 
+                this.updateCalendar();
+            },
+
+            showLoader(elementId) {
+                const overlay = document.querySelector(`#${elementId} .loading-overlay`);
+                if (overlay) overlay.classList.add('visible');
+            },
+
+            hideLoader(elementId) {
+                const overlay = document.querySelector(`#${elementId} .loading-overlay`);
+                if (overlay) overlay.classList.remove('visible');
+            },
+
+            setupKpiClickHandlers() {
+                const kpiCards = [
+                    'projected-workload-card',
+                    'actual-workload-card', 
+                    'projected-classes-card',
+                    'actual-classes-card',
+                    'cancelled-delayed-card',
+                    'cancelled-delayed-percent-card',
+                    'delayed-not-compensated-card',
+                    'delayed-not-compensated-percent-card'
+                ];
+
+                kpiCards.forEach(cardId => {
+                    const card = document.getElementById(cardId);
+                    if (card) {
+                        card.addEventListener('click', () => this.handleKpiClick(cardId));
+                    }
+                });
+            },
+
+           // Inside TeacherDashboard object, REPLACE THE ENTIRE handleKpiClick FUNCTION WITH THIS:
+async handleKpiClick(cardId) {
+    const selectedTeacherName = document.getElementById('teacher-select').value;
+    const category = this.currentCategory;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const kpiName = cardId.replace('-card', '').replace(/-/g, ' '); // Convert 'projected-classes-card' to 'Projected Classes'
+
+    console.log(`Frontend: KPI card clicked: ${kpiName}`);
+    console.log(`Frontend: Attempting to open raw data page with params:`, {
+        category: category,
+        kpiType: kpiName,
+        teacherName: selectedTeacherName,
+        startDate: startDate,
+        endDate: endDate
+    });
+
+    if (!category) {
+        alert("Error: Category not loaded. Cannot display raw data.");
+        return;
+    }
+
+    // Construct the URL for the raw_data_table.html page
+    const urlParams = new URLSearchParams({
+        category: encodeURIComponent(category),
+        kpiType: encodeURIComponent(kpiName), // Pass the KPI name to filter raw data
+        teacherName: encodeURIComponent(selectedTeacherName),
+        startDate: startDate,
+        endDate: endDate
+    });
+
+    // Open the new raw data page in a new tab
+    window.open(`raw_data_table.html?${urlParams.toString()}`, '_blank');
+
+    // Optional: Keep the old alert for quick feedback, remove if not needed
+    // alert(`Opening raw data for: ${kpiName}\nCategory: ${category}\nTeacher: ${selectedTeacherName}`);
+},
+
+            handleDateClick(date, dayElement) {
+                const formatDate = date.toISOString().slice(0, 10);
+                const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'long' });
+                const monthName = date.toLocaleDateString('en-US', { month: 'long' });
+                
+                document.querySelectorAll('.calendar-day').forEach(el => {
+                    el.classList.remove('selected');
+                });
+                
+                dayElement.classList.add('selected');
+                
+                const startDateInput = document.getElementById('start-date');
+                const endDateInput = document.getElementById('end-date');
+                
+                if (!startDateInput.value) {
+                    startDateInput.value = formatDate;
+                    this.selectedStartDate = date;
+                } else if (!endDateInput.value) {
+                    endDateInput.value = formatDate;
+                    this.selectedEndDate = date;
+                } else {
+                    startDateInput.value = formatDate;
+                    endDateInput.value = '';
+                    this.selectedStartDate = date;
+                    this.selectedEndDate = null;
+                }
+                
+                this.updateDashboardView();
+                this.updateCalendar();
+                
+                console.log(`Date clicked: ${dayOfWeek}, ${monthName} ${date.getDate()}, ${date.getFullYear()}`);
+                
+                this.showDateClickFeedback(date);
+            },
+
+            showDateClickFeedback(date) {
+                const feedback = document.createElement('div');
+                feedback.textContent = `Selected: ${date.toLocaleDateString('en-US', { 
+                    weekday: 'short', 
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                })}`;
+                feedback.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #333;
+                    color: white;
+                    padding: 10px 15px;
+                    border-radius: 8px;
+                    font-weight: bold;
+                    z-index: 1000;
+                    animation: fadeInOut 2s ease-in-out;
+                `;
+                
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes fadeInOut {
+                        0% { opacity: 0; transform: translateY(-10px); }
+                        20% { opacity: 1; transform: translateY(0); }
+                        80% { opacity: 1; transform: translateY(0); }
+                        100% { opacity: 0; transform: translateY(-10px); }
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                document.body.appendChild(feedback);
+                
+                setTimeout(() => {
+                    document.body.removeChild(feedback);
+                    document.head.removeChild(style);
+                }, 2000);
+            },
+
+            addButtonClickEffects() {
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(button => {
+                    if (!button.hasAttribute('data-click-enhanced')) {
+                        button.setAttribute('data-click-enhanced', 'true');
+                        
+                        button.addEventListener('click', function() {
+                            this.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                this.style.transform = '';
+                            }, 150);
+                            
+                            console.log(`Button clicked: ${this.textContent || this.id}`);
+                        });
+                        
+                        button.addEventListener('mouseenter', function() {
+                            this.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.3)';
+                        });
+                        
+                        button.addEventListener('mouseleave', function() {
+                            this.style.boxShadow = '';
+                        });
+                    }
+                });
+            }
+        };
+
+        // Initialize the application
+        TeacherDashboard.init();
+    </script>
+</body>
+</html>

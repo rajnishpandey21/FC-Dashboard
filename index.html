@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Faculty Classes Tracker</title>
+    <style>
+        /* Your existing CSS for the landing page */
+        html, body {
+            margin: 0; padding: 0; min-height: 100vh; width: 100%; overflow-x: hidden; box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(to bottom right, #2D0075, #ff5722);
+            color: #fff; text-align: center; padding-top: 30px; padding-bottom: 30px; padding-left: 20px; padding-right: 20px;
+        }
+        h1 {
+            font-size: 3em; font-weight: bold; margin-bottom: 40px; text-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+        }
+        .tracker-container {
+            display: flex; flex-wrap: wrap; justify-content: center; gap: 25px; max-width: 1200px; margin: 0 auto;
+        }
+        .class-button {
+            background: #ffffff; color: #000; border-radius: 15px; width: 250px; padding: 15px 20px;
+            display: flex; align-items: center; justify-content: flex-start; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            text-decoration: none; transition: all 0.3s ease;
+        }
+        .class-button:hover {
+            transform: scale(1.05); box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4); background-color: #f2f2f2;
+        }
+        .class-button img {
+            width: 55px; height: 55px; border-radius: 50%; margin-right: 15px; object-fit: cover;
+        }
+        .class-button span {
+            font-weight: bold; font-size: 1.1em;
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5em; }
+            .class-button { width: 220px; padding: 12px 18px; }
+            .class-button img { width: 45px; height: 45px; margin-right: 12px; }
+            .class-button span { font-size: 1em; }
+        }
+        @media (max-width: 480px) {
+            h1 { font-size: 2em; margin-bottom: 30px; }
+            .tracker-container { gap: 20px; }
+            .class-button { width: 90%; max-width: 280px; padding: 10px 15px; }
+            .class-button img { width: 40px; height: 40px; margin-right: 10px; }
+            .class-button span { font-size: 0.95em; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>FACULTY CLASSES TRACKER</h1>
+
+    <div class="tracker-container">
+
+        <a href="dashboard.html?category=SSC Actuals" class="class-button">
+            <img src="img/ssc.png" alt="SSC">
+            <span>SSC Wallah</span>
+        </a>
+
+        <a href="dashboard.html?category=Railway Actuals" class="class-button">
+            <img src="img/railway.png" alt="Railway">
+            <span>Railway Wallah</span>
+        </a>
+
+        <a href="dashboard.html?category=Govt. Exams Actuals" class="class-button">
+            <img src="img/govt.png" alt="Govt Exams">
+            <span>Govt. Exams Wallah</span>
+        </a>
+
+        <a href="dashboard.html?category=Banking Actuals" class="class-button">
+            <img src="img/banking.png" alt="Banking">
+            <span>Banking Wallah</span>
+        </a>
+
+        <a href="dashboard.html?category=UPSC Actuals" class="class-button">
+            <img src="img/up.png" alt="UP Exams">
+            <span>UPSC Wallah</span>
+        </a>
+
+        <a href="dashboard.html?category=Bihar Exams Actuals" class="class-button">
+            <img src="img/bihar.png" alt="Bihar Exams">
+            <span>Bihar Exams Wallah</span>
+        </a>
+
+        <a href="dashboard.html?category=JAAIB CAAIB Actuals" class="class-button">
+            <img src="img/jaaib.png" alt="JAAIB CAAIB">
+            <span>JAAIB CAAIB</span>
+        </a>
+
+        <a href="dashboard.html?category=Teaching Actuals" class="class-button">
+            <img src="img/teaching.png" alt="Teaching">
+            <span>Teaching Wallah</span>
+        </a>
+
+    </div>
+
+</body>
+</html>

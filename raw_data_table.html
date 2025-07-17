@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Raw Data Drill-down</title>
+    <link rel="icon" href="my-favicon.png" type="image/png">
+    <link rel="apple-touch-icon" href="my-favicon.png">
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            position: relative; /* For loader */
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2.2em;
+            text-align: center;
+        }
+        h2 {
+            color: #555;
+            font-size: 1.2em;
+            margin-top: -10px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .controls button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            background-color: #007bff;
+            color: white;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .controls button:hover {
+            background-color: #0056b3;
+            transform: translateY(-1px);
+        }
+        .controls button:active {
+            transform: translateY(0);
+        }
+        .controls button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 12px 15px;
+            text-align: left;
+        }
+        th {
+            background-color: #f0f0f0;
+            font-weight: 600;
+            color: #333;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        tr:nth-child(even) {
+            background-color: #f8f8f8;
+        }
+        tr:hover {
+            background-color: #eef;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 20px;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .pagination button {
+            background-color: #6c757d;
+        }
+        .pagination button:hover {
+            background-color: #5a6268;
+        }
+        .pagination span {
+            font-weight: 600;
+            color: #555;
+        }
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .loading-overlay.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(0, 0, 0, 0.1);
+            border-top-color: #007bff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background-color: #6d3f9c; /* Matches your clear filters button */
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: background-color 0.2s;
+            z-index: 10;
+        }
+        .back-button:hover {
+            background-color: #4a2b6e;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            body { margin: 10px; }
+            .container { padding: 15px; }
+            h1 { font-size: 1.8em; }
+            h2 { font-size: 1em; }
+            th, td { padding: 8px 10px; font-size: 0.85em; }
+            .controls { flex-direction: column; align-items: stretch; }
+            .pagination { flex-direction: column; }
+            .back-button { top: 10px; left: 10px; padding: 8px 12px; font-size: 0.9em;}
+        }
+    </style>
+</head>
+<body>
+    <a href="dashboard.html" class="back-button">← Back to Dashboard</a>
+    <div class="container">
+        <div class="loading-overlay" id="loading-overlay"><div class="spinner"></div></div>
+        <h1 id="kpi-title"></h1>
+        <h2 id="filter-summary"></h2>
+
+        <div class="controls">
+            <button id="exportCsvBtn">Export All to CSV</button>
+            <div class="pagination">
+                <button id="prevPage">Previous</button>
+                <span id="pageInfo"></span>
+                <button id="nextPage">Next</button>
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table id="dataTable">
+                <thead>
+                    <tr id="tableHeaders"></tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script>
+        const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbxI578Ubcjtuia4wKRok7dfOIYJ4bKpS2ZlRX4nIbetO_LkxbYG4q7BBE9tvq-JGnaXug/exec'; // *** IMPORTANT: PASTE YOUR LATEST APPS SCRIPT URL HERE ***
+
+        const RAW_DATA_PAGE = {
+            data: [],
+            headers: [],
+            currentPage: 1,
+            rowsPerPage: 25, // Number of rows per page
+
+            init() {
+                document.addEventListener('DOMContentLoaded', () => {
+                    this.loadData();
+                    this.setupEventListeners();
+                });
+            },
+
+            getUrlParameter(name) {
+                name = name.replace(/[\[]/, '\\[').replace(/[\]]/, '\\]');
+                var regex = new RegExp('[\\?&]' + name + '=([^&#]*)');
+                var results = regex.exec(location.search);
+                // The parameters coming from dashboard.html are already URL-encoded, and getUrlParameter decodes them.
+                // So, the values used in loadData() will be plain strings like "Banking Actuals".
+                return results === null ? '' : decodeURIComponent(results[1].replace(/\+/g, ' '));
+            },
+
+            showLoader() {
+                document.getElementById('loading-overlay').classList.add('visible');
+            },
+
+            hideLoader() {
+                document.getElementById('loading-overlay').classList.remove('visible');
+            },
+
+            setupEventListeners() {
+                document.getElementById('prevPage').addEventListener('click', () => this.changePage(-1));
+                document.getElementById('nextPage').addEventListener('click', () => this.changePage(1));
+                document.getElementById('exportCsvBtn').addEventListener('click', () => this.exportToCsv());
+            },
+
+            async loadData() {
+                this.showLoader();
+                const category = this.getUrlParameter('category');
+                const kpiType = this.getUrlParameter('kpiType');
+                const teacherName = this.getUrlParameter('teacherName');
+                const startDate = this.getUrlParameter('startDate');
+                const endDate = this.getUrlParameter('endDate');
+
+                console.log("\n--- Raw Data Page Load Initiated ---");
+                console.log("Frontend: URL Parameters received from dashboard.html:");
+                console.log({
+                    category: category,
+                    kpiType: kpiType,
+                    teacherName: teacherName,
+                    startDate: startDate,
+                    endDate: endDate
+                });
+
+                document.getElementById('kpi-title').textContent = `${kpiType} Details`;
+                let filters = [];
+                if (category) filters.push(`Category: ${category}`);
+                if (teacherName && teacherName !== '__ALL__') filters.push(`Teacher: ${teacherName}`);
+                if (startDate) filters.push(`Start Date: ${startDate}`);
+                if (endDate) filters.push(`End Date: ${endDate}`);
+                document.getElementById('filter-summary').textContent = filters.join(' | ');
+
+                if (!category || !kpiType) {
+                    console.error("Frontend Error: Missing required URL parameters for raw data page.");
+                    alert('Error: Missing required parameters (category or kpiType).');
+                    this.hideLoader();
+                    return;
+                }
+
+                try {
+                    // FIX: Removed encodeURIComponent for parameters already decoded by getUrlParameter
+                  // Inside RAW_DATA_PAGE object's loadData() function (around line 273)
+// --- THIS IS THE CORRECTED BLOCK ---
+const urlParams = new URLSearchParams({
+    path: 'raw-data',
+    category: encodeURIComponent(category), // Correct: ENCODE for this outgoing request
+    kpiType: encodeURIComponent(kpiType)    // Correct: ENCODE for this outgoing request
+});
+if (teacherName && teacherName !== '__ALL__') urlParams.append('teacherName', encodeURIComponent(teacherName)); // Correct: ENCODE teacher name
+if (startDate) urlParams.append('startDate', startDate); // Dates are usually fine as-is
+if (endDate) urlParams.append('endDate', endDate);       // Dates are usually fine as-is
+// --- END CORRECTED BLOCK ---
+                    const requestUrl = `${API_BASE_URL}?${urlParams.toString()}`;
+                    console.log("Frontend: Requesting raw data from URL:", requestUrl);
+
+                    const response = await fetch(requestUrl);
+                    console.log("Frontend: Raw data API response status:", response.status);
+
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        console.error("Frontend Error: HTTP request failed for raw data API.", errorText);
+                        throw new Error(`HTTP error! Status: ${response.status}. Details: ${errorText}`);
+                    }
+                    const result = await response.json();
+                    console.log("Frontend: Received raw data API response JSON:", result);
+
+                    if (result.error) {
+                        console.error("Frontend Error: Backend reported an error for raw data:", result.error);
+                        alert('Backend Error: ' + result.error);
+                        this.data = [];
+                        this.headers = [];
+                    } else if (result.message) {
+                        console.warn("Frontend Warning: Backend message for raw data:", result.message);
+                        alert(result.message);
+                        this.data = [];
+                        this.headers = [];
+                    } else {
+                        this.data = result.data || [];
+                        this.headers = result.headers || [];
+                        console.log(`Frontend: Raw data received: ${this.data.length} rows, Headers: ${this.headers.join(', ')}`);
+                        if (this.data.length === 0) {
+                            console.warn("Frontend Warning: No raw data found for the selected criteria after successful API call.");
+                            alert("No raw data found for the selected criteria.");
+                        }
+                    }
+                    this.renderTable();
+                    console.log("Frontend: Raw data table rendered.");
+
+                } catch (error) {
+                    console.error('Frontend Error: Loading raw data encountered an issue:', error);
+                    alert('Failed to load raw data. Please check console for details. Error: ' + error.message);
+                    this.data = [];
+                    this.headers = [];
+                    this.renderTable();
+                } finally {
+                    this.hideLoader();
+                    console.log("--- Raw Data Page Load Finished ---");
+                }
+            },
+
+            renderTable() {
+                const tableBody = document.getElementById('tableBody');
+                const tableHeaders = document.getElementById('tableHeaders');
+                tableBody.innerHTML = '';
+                tableHeaders.innerHTML = '';
+
+                if (this.data.length === 0) {
+                    tableBody.innerHTML = '<tr><td colspan="100%" style="text-align: center; padding: 20px;">No data available.</td></tr>';
+                    document.getElementById('pageInfo').textContent = 'Page 0 of 0';
+                    document.getElementById('prevPage').disabled = true;
+                    document.getElementById('nextPage').disabled = true;
+                    document.getElementById('exportCsvBtn').disabled = true;
+                    return;
+                }
+                document.getElementById('exportCsvBtn').disabled = false;
+
+
+                // Render Headers
+                this.headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    tableHeaders.appendChild(th);
+                });
+
+                // Calculate pagination
+                const startIndex = (this.currentPage - 1) * this.rowsPerPage;
+                const endIndex = Math.min(startIndex + this.rowsPerPage, this.data.length);
+                const paginatedData = this.data.slice(startIndex, endIndex);
+
+                // Render rows
+                paginatedData.forEach(rowData => {
+                    const tr = document.createElement('tr');
+                    this.headers.forEach(header => {
+                        const td = document.createElement('td');
+                        // Format dates if the column is 'Date'
+                        if (header === 'Date') { // Only format if it's a date column
+                            const dateValue = rowData[header];
+                            if (dateValue instanceof Date) { // Check if it's a Date object
+                                td.textContent = dateValue.toLocaleDateString('en-GB'); 
+                            } else if (typeof dateValue === 'string' && !isNaN(new Date(dateValue).getTime())) {
+                                // If it's a date string that can be parsed, parse and format
+                                td.textContent = new Date(dateValue).toLocaleDateString('en-GB');
+                            } else {
+                                td.textContent = dateValue || ''; 
+                            }
+                        } else {
+                            td.textContent = rowData[header] || ''; 
+                        }
+                        tr.appendChild(td);
+                    });
+                    tableBody.appendChild(tr);
+                });
+
+                this.updatePaginationControls();
+            },
+
+            updatePaginationControls() {
+                const totalPages = Math.ceil(this.data.length / this.rowsPerPage);
+                document.getElementById('pageInfo').textContent = `Page ${this.currentPage} of ${totalPages}`;
+
+                document.getElementById('prevPage').disabled = this.currentPage === 1;
+                document.getElementById('nextPage').disabled = this.currentPage === totalPages || totalPages === 0;
+            },
+
+            changePage(direction) {
+                const totalPages = Math.ceil(this.data.length / this.rowsPerPage);
+                this.currentPage += direction;
+
+                if (this.currentPage < 1) this.currentPage = 1;
+                if (this.currentPage > totalPages && totalPages > 0) this.currentPage = totalPages;
+                if (totalPages === 0) this.currentPage = 0;
+
+                this.renderTable();
+            },
+
+            exportToCsv() {
+                if (this.data.length === 0) {
+                    alert("No data to export.");
+                    return;
+                }
+
+                let csvContent = this.headers.map(header => `"${header}"`).join(',') + '\n'; // CSV headers
+                this.data.forEach(row => {
+                    let rowData = this.headers.map(header => {
+                        let value = row[header];
+                        if (header === 'Date') { // Only format if it's a date column
+                            if (value instanceof Date) {
+                                value = value.toLocaleDateString('en-GB'); // Format date for CSV
+                            } else if (typeof value === 'string' && !isNaN(new Date(value).getTime())) {
+                                value = new Date(value).toLocaleDateString('en-GB');
+                            }
+                        }
+                        // Ensure values with commas or newlines are quoted
+                        return `"${String(value).replace(/"/g, '""')}"`;
+                    }).join(',');
+                    csvContent += rowData + '\n';
+                });
+
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `RawData_Export_${this.getUrlParameter('kpiType').replace(/\s/g, '_')}_${this.getUrlParameter('category').replace(/\s/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        };
+
+        RAW_DATA_PAGE.init();
+    </script>
+</body>
+</html>
